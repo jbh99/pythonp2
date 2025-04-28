@@ -1,0 +1,117 @@
+import random
+import requests
+import json
+
+def get_korean_districts_from_api():
+    url = "https://apis.openapi.sk.com/puzzle/travel/meta/districts?type=ri"
+    headers = {
+        "appkey": "tBXyxqucgs6GWby9l8reg7cfV6hTVBgyz6GVauag"  # 제공받은 API 키 사용
+    }
+    
+    try:
+        response = requests.get(url, headers=headers)
+        response.raise_for_status()
+        data = response.json()
+        
+        # API 응답 데이터에서 한국 지역 정보 추출
+        korean_districts = []
+        for item in data.get('result', {}).get('districts', []):
+            if item.get('country') == 'Korea':  # 한국 지역만 필터링
+                korean_districts.append({
+                    'name': item.get('name'),
+                    'description': item.get('description', '한국의 아름다운 여행지')
+                })
+        return korean_districts
+    except requests.exceptions.RequestException as e:
+        print(f"API 요청 실패: {e}")
+        return []
+
+def travel_recommender():
+    print("🌟 대한민국 여행지 추천 프로그램 (SK Open API 연동) 🌟")
+    print("=" * 50)
+   
+    # 사용자 선호도 조사
+    print("\n여행 스타일을 선택해주세요 (1-5):")
+    budget = int(input("예산 (1: 저예산 ~ 5: 고예산): "))
+    activity = int(input("활동성 (1: 휴식 ~ 5: 모험): "))
+    culture = int(input("문화/역사 관심도 (1: 낮음 ~ 5: 높음): "))
+    food = int(input("음식 관심도 (1: 낮음 ~ 5: 높음): "))
+    climate = int(input("선호 기후 (1: 추움 ~ 3: 중립 ~ 5: 더움): "))
+    
+    # API에서 한국 지역 정보 가져오기
+    api_districts = get_korean_districts_from_api()
+    
+    # 기본 국내 여행지 데이터 (API가 없을 경우 사용)
+    destinations = {
+        "서울": {
+            "budget": 4, "activity": 5, "culture": 5, "food": 5, "climate": 3,
+            "desc": "현대와 전통이 공존하는 대한민국의 수도"
+        },
+        "부산": {
+            "budget": 3, "activity": 4, "culture": 4, "food": 5, "climate": 4,
+            "desc": "바다와 도시가 어우러진 활기찬 항구도시"
+        },
+        "제주도": {
+            "budget": 3, "activity": 5, "culture": 3, "food": 4, "climate": 4,
+            "desc": "아름다운 자연경관과 독특한 문화를 가진 섬"
+        },
+        "경주": {
+            "budget": 2, "activity": 2, "culture": 5, "food": 3, "climate": 3,
+            "desc": "신라의 역사와 문화가 살아숨쉬는 고도"
+        },
+        "강릉": {
+            "budget": 3, "activity": 3, "culture": 4, "food": 4, "climate": 3,
+            "desc": "아름다운 해안과 맛있는 커피로 유명한 동해안 도시"
+        }
+    }
+    
+    # API에서 가져온 데이터로 destinations 업데이트
+    for district in api_districts:
+        name = district.get('name', '')
+        if name and name not in destinations:
+            destinations[name] = {
+                "budget": random.randint(2, 4),
+                "activity": random.randint(2, 5),
+                "culture": random.randint(2, 5),
+                "food": random.randint(3, 5),
+                "climate": random.randint(2, 4),
+                "desc": district.get('description', f"{name} 지역의 아름다운 여행지")
+            }
+   
+    # 선호도 점수 계산
+    recommendations = []
+    for dest, attrs in destinations.items():
+        score = 0
+        score += 5 - abs(budget - attrs["budget"])
+        score += 5 - abs(activity - attrs["activity"])
+        score += 5 - abs(culture - attrs["culture"])
+        score += 5 - abs(food - attrs["food"])
+        score += 5 - abs(climate - attrs["climate"])
+        recommendations.append((dest, score, attrs["desc"]))
+   
+    # 상위 3개 추천
+    recommendations.sort(key=lambda x: x[1], reverse=True)
+   
+    print("\n" + "=" * 50)
+    print("🏆 당신을 위한 최고의 국내 여행지 추천 🏆")
+    print("=" * 50)
+   
+    for i, (dest, score, desc) in enumerate(recommendations[:3], 1):
+        print(f"\n{i}위: {dest} (적합도: {score}/25)")
+        print(f"📌 {desc}")
+   
+    # 랜덤 추천 (API에서 가져온 데이터 우선)
+    if api_districts:
+        random_rec = random.choice(api_districts)
+        print("\n" + "=" * 50)
+        print(f"🎲 오늘의 API 랜덤 추천: {random_rec.get('name', '')}")
+        print(f"📌 {random_rec.get('description', 'API에서 제공하는 한국 여행지')}")
+    else:
+        random_rec = random.choice(list(destinations.items()))
+        print("\n" + "=" * 50)
+        print(f"🎲 오늘의 랜덤 추천: {random_rec[0]}")
+        print(f"📌 {random_rec[1]['desc']}")
+    print("=" * 50)
+
+if __name__ == "__main__":
+    travel_recommender()
